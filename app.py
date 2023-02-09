@@ -1,131 +1,53 @@
 from flask import Flask, request, jsonify, send_file
-from psycopg2 import connect, extras
-from cryptography.fernet import Fernet
-from dotenv import load_dotenv
-from os import environ
-load_dotenv()
+import os
+import psycopg2
 
 app = Flask(__name__)
-key = Fernet.generate_key()
 
-host = environ.get('DB_HOST')
-port = environ.get('DB_PORT')
-dbname = environ.get('DB_NAME')
-user = environ.get('DB_USER')
-password = environ.get('DB_PASSWORD')
+conn = psycopg2.connect(
+    host="35.209.201.133",
+    port=5432,
+    user="usyny1atg53ox",
+    password="BKZ4bvr3mqe!yrf_npx",
+    database="dbwdxqj0qx08zj"
+)
+cur = conn.cursor()
 
-
-def get_connection():
-    conn = connect(host=host, port=port, dbname=dbname,
-                   user=user, password=password)
-    return conn
-
-
-@app.get("/api/users")
-def get_users():
-
-    conn = get_connection()
-    cur = conn.cursor(cursor_factory=extras.RealDictCursor)
-
-    cur.execute("SELECT * FROM users")
-    users = cur.fetchall()
-
-    cur.close()
-    conn.close()
-
-    return jsonify(users)
-
-
-@app.get("/api/users/<id>")
-def get_user(id):
-
-    conn = get_connection()
-    cur = conn.cursor(cursor_factory=extras.RealDictCursor)
-
-    cur.execute("SELECT * FROM users WHERE id = %s", (id,))
+@app.route("/api/user/<unique_identifier>", methods=["GET"])
+def get_user(unique_identifier):
+    cur.execute(f"SELECT * FROM uwt WHERE unique_identifier = '{unique_identifier}'")
     user = cur.fetchone()
 
-    cur.close()
-    conn.close()
-
-    if(user is None):
+    if not user:
         return jsonify({"message": "User not found"}), 404
 
     return jsonify(user)
 
-
-@app.post("/api/users")
-def create_user():
-
-    newUser = request.get_json()
-    userName = newUser["username"]
-    email = newUser["email"]
-    password = Fernet(key).encrypt(bytes(newUser["password"], "utf-8"))
-
-    conn = get_connection()
-    cur = conn.cursor(cursor_factory=extras.RealDictCursor)
-
-    cur.execute(
-        "INSERT INTO users (username, email, password) VALUES (%s, %s, %s) RETURNING *", (
-            userName, email, password),
-    )
-    newCreatedUser = cur.fetchone()
+@app.route("/api/user/<unique_identifier>", methods=["PUT"])
+def update_user(unique_identifier):
+    new_user = request.get_json()
+    first_name = new_user.get("first_name")
+    full_name = new_user.get("full_name")
+    email = new_user.get("email")
+    photo_url = new_user.get("photo_url")
+    bio = new_user.get("bio")
+    six_word_one_liner = new_user.get("six_word_one_liner")
+    location = new_user.get("location")
+    key_words_change_from_skills = new_user.get("key_words_change_from_skills")
+    organization = new_user.get("organization")
+    title = new_user.get("title")
+    organization_url = new_user.get("organization_url")
+    linkedin_url = new_user.get("linkedin_url")
+    last_update = new_user.get("last_update")
+    
+    cur.execute(f"UPDATE uwt SET first_name = '{first_name}', full_name = '{full_name}', email = '{email}', photo_url = '{photo_url}', bio = '{bio}', six_word_one_liner = '{six_word_one_liner}', location = '{location}', key_words_change_from_skills = '{key_words_change_from_skills}', organization = '{organization}', title = '{title}', organization_url = '{organization_url}', linkedin_url = '{linkedin_url}', last_update = '{last_update}' WHERE unique_identifier = '{unique_identifier}' RETURNING *")
+    updated_user = cur.fetchone()
     conn.commit()
 
-    cur.close()
-    conn.close()
-
-    return jsonify(newCreatedUser)
-
-
-@app.delete("/api/users/<id>")
-def delete_user(id):
-
-    conn = get_connection()
-    cur = conn.cursor(cursor_factory=extras.RealDictCursor)
-
-    cur.execute("DELETE FROM users WHERE id = %s RETURNING *", (id,))
-    user = cur.fetchone()
-    conn.commit()
-
-    cur.close()
-    conn.close()
-
-    if(user is None):
+    if not updated_user:
         return jsonify({"message": "User not found"}), 404
 
-    return jsonify(user)
-
-
-@app.put("/api/users/<id>")
-def update_user(id):
-
-    conn = get_connection()
-    cur = conn.cursor(cursor_factory=extras.RealDictCursor)
-
-    newUser = request.get_json()
-    userName = newUser["username"]
-    email = newUser["email"]
-    password = Fernet(key).encrypt(bytes(newUser["password"], "utf-8"))
-
-    cur.execute("UPDATE users SET username = %s, email = %s, password = %s WHERE id = %s RETURNING *",
-                (userName, email, password, id))
-    updatedUser = cur.fetchone()
-    conn.commit()
-
-    cur.close()
-    conn.close()
-
-    if(updatedUser is None):
-        return jsonify({"message": "User not found"}), 404
-
-    return jsonify(updatedUser)
-
-
-@app.get('/')
-def home():
-    return send_file('static/index.html')
-
+    return jsonify(updated_user)
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run()
