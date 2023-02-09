@@ -49,5 +49,10 @@ def update_user(unique_identifier):
 
     return jsonify(updated_user)
 
+@app.get('/')
+def home():
+    return send_file('static/index.html')
+
+
 if __name__ == "__main__":
-    app.run()
+    app.run(debug=True)
